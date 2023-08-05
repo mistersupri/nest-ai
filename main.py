@@ -2,7 +2,6 @@ import pyaudio
 import math
 import time
 import wave
-import pyttsx3
 import speech_recognition as sr
 from gtts import gTTS
 from pydub import AudioSegment
