@@ -43,13 +43,31 @@ def play_audio(audio_filename):
 
 
 def evaluate_command(text, temperature=0):
+    gpt_mode = "gpt-3.5-turbo"
+    output_filename = "output.mp3"
     if ("tulis" in text):
-        type_text(text)
-        return False
-    else:
-        output_filename = "output.mp3"
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model=gpt_mode,
+            temperature=temperature,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Kamu akan mengetikkan sesuatu pada komputer user. Jadi, pastikan jawaban kamu sangat singkat dan tidak perlu penjelasan apa pun. Misal, user ingin kamu menuliskan topi dalam bahasa inggris, maka kamu akan menjawab 'hat' tanpa ada tambahan jawaban lain."
+                },
+                {
+                    "role": "user",
+                    "content": text
+                }
+            ]
+        )
+        answer = response['choices'][0]['message']['content']
+        print(answer)
+        type_text(answer)
+        text_to_audio(answer, output_filename)
+        play_audio(output_filename)
+    else:
+        response = openai.ChatCompletion.create(
+            model=gpt_mode,
             temperature=temperature,
             messages=[
                 {
@@ -68,6 +86,7 @@ def evaluate_command(text, temperature=0):
         play_audio(output_filename)
         if ("terima kasih" in answer.lower()):
             return False
+    return True
 
 
 def calculate_volume(data):
