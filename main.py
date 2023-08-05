@@ -58,7 +58,8 @@ def evaluate_command(text, temperature=0):
                     "role": "user",
                     "content": text
                 }
-            ]
+            ],
+            max_tokens=5,
         )
         answer = response['choices'][0]['message']['content']
         print(answer)
@@ -72,13 +73,14 @@ def evaluate_command(text, temperature=0):
             messages=[
                 {
                     "role": "system",
-                    "content": "Kamu adalah seorang yang sangat pintar dari semua pelajaran. Jawablah semua pertanyaan dari user. Tidak perlu menjelaskan secara spesifik dan jawab secukupnya. Tanyakan apakah user ingin bertanya lagi. Jika user tidak ingin bertanya lagi, jangan lupa ucapkan 'terima kasih ya!'"
+                    "content": "Kamu adalah seorang yang sangat pintar dari semua pelajaran. Jawablah semua pertanyaan dari user. Tidak perlu menjelaskan secara spesifik dan jawab secukupnya. Tidak perlu selalu mengucapkan terima kasih, tapi tanyakan apakah user ingin bertanya lagi. Jika user tidak ingin bertanya lagi, baru ucapkan 'terima kasih ya!'"
                 },
                 {
                     "role": "user",
                     "content": text
                 }
-            ]
+            ],
+            max_tokens=5,
         )
         answer = response['choices'][0]['message']['content']
         print(answer)
