@@ -1,0 +1,7 @@
+pyaudio
+SpeechRecognition
+gTTs
+pydub
+pyautogui
+openai
+transformers
