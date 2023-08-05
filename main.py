@@ -45,6 +45,7 @@ def play_audio(audio_filename):
 def evaluate_command(text, temperature=0):
     if ("tulis" in text):
         type_text(text)
+        return False
     else:
         output_filename = "output.mp3"
         response = openai.ChatCompletion.create(
@@ -65,9 +66,8 @@ def evaluate_command(text, temperature=0):
         print(answer)
         text_to_audio(answer, output_filename)
         play_audio(output_filename)
-        if ("terima kasih" not in answer.lower() and "terima kasih" not in text.lower()):
-            return True
-    return False
+        if ("terima kasih" in answer.lower()):
+            return False
 
 
 def calculate_volume(data):
