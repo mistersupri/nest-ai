@@ -2,5 +2,6 @@ env
 __pycache__
 
 .api_key
+.env*
 *.mp3
 *.wav

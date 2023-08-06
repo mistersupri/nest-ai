@@ -5,3 +5,7 @@ pydub
 pyautogui
 openai
 transformers
+torch
+einops
+accelerate
+python-dotenv
