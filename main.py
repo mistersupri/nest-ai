@@ -11,13 +11,13 @@ import openai
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, LocalAgent
 from transformers import pipeline
-from elevenlabs import generate, play as elPlay, set_api_key
+import elevenlabs
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-set_api_key(os.getenv("ELEVEN_API_KEY"))
+elevenlabs.set_api_key(os.getenv("ELEVEN_API_KEY"))
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 CHUNK = 1024  # The number of frames per buffer
@@ -45,14 +45,22 @@ templates_obj = {
             Tidak perlu menjelaskan secara spesifik dan jawab secukupnya.
             Tidak perlu selalu mengucapkan terima kasih,
             tapi tanyakan apakah user ingin bertanya lagi.
-            Jika user tidak ingin bertanya lagi, baru ucapkan 'terima kasih ya!'
+            Jika user tidak ingin bertanya lagi, baru ucapkan 'terima kasih ya!'.
             """,
     "write": """
             Kamu akan mengetikkan sesuatu pada komputer user. 
             Jadi, pastikan jawaban kamu sangat singkat dan tidak perlu penjelasan apa pun.
             Misal, user ingin kamu menuliskan topi dalam bahasa inggris,
             maka kamu akan menjawab 'hat' tanpa ada tambahan jawaban lain.
-            """
+            """,
+    # "api": """
+    #         Kamu adalah penyedia penyedia api, Perhatikan pertanyaan atau pernyataan dari user.
+    #         Jika user bertanya tentang email dia, atau dia ingin kamu memberitahu email terakhir
+    #         yang tersedia. Kamu bisa memberikan jawaban berupa json object, yaitu:
+    #         {type: 'LATEST_EMAIL'}.
+    #         Jika user ingin kamu menelpon seseorang. Kamu bisa memberikan jawaban berupa json object, yaitu:
+    #         {type: 'CALL_PHONE'}.
+    #         """
 }
 
 
@@ -89,12 +97,12 @@ def play_audio_from_text_google(text):
 
 
 def play_audio_from_text(text):
-    audio = generate(
+    audio = elevenlabs.generate(
         text=text,
         voice="Bella",
         model='eleven_multilingual_v1'
     )
-    elPlay(audio)
+    elevenlabs.play(audio)
 
 
 # checkpoint = "tiiuae/falcon-7b"
@@ -111,7 +119,7 @@ def play_audio_from_text(text):
 
 
 def ask_gpt(text, template="basic"):
-    gpt_mode = "gpt-3.5-turbo"
+    gpt_mode = "gpt-3.5-turbo-16k"
     response = openai.ChatCompletion.create(
         model=gpt_mode,
         messages=[
