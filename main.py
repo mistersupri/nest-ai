@@ -16,6 +16,7 @@ import os
 from dotenv import load_dotenv
 import requests
 import json
+import gmail_api
 # from multiprocessing import Process, Pipe
 
 load_dotenv()
@@ -31,11 +32,11 @@ CHANNELS = 1  # Mono audio channel
 RATE = 44100  # Sampling rate (samples per second)
 THRESHOLD = 500  # Adjust this threshold to control sensitivity
 # Time in seconds to wait for silence before stopping recording
-SILENCE_HOTWORD_INTERVAL = 1
+SILENCE_HOTWORD_INTERVAL = 0.5
 # Time in seconds to wait for silence before stopping recording
-SILENCE_EVAL_INTERVAL = 3
+SILENCE_EVAL_INTERVAL = 2
 
-HOTWORD = "joni"
+HOTWORD = "lisa"
 AGENT_VOICE_FILENAME = "output.mp3"
 USER_VOICE_FILENAME = "recorded_audio.wav"
 LANGUAGE = "id-ID"
@@ -49,16 +50,12 @@ MESSAGES_TEMPLATE = {
             "role": "assistant",
             "content": """
             I want you to act as a response generator.
-            I will provide you with question or statements,
-            Your task is to generate response based on below array of objects.
+            I will provide you with question or statements that asking about my information,
+            Your task is only to generate response based on below array of objects.
             [
                 {
                     "name": ["email"],
                     "type": "ALL_EMAILS"
-                },
-                {
-                    "name": ["email", "terakhir"],
-                    "type": "LATEST_EMAIL"
                 },
                 {   "name": ["panggilan"],
                     "type": "ALL_CALLS"
@@ -67,12 +64,12 @@ MESSAGES_TEMPLATE = {
             Do not include any explanations or additional information in your response, simply provide the generated response.
             The key "name" is the words that related to the question or statement and the key "type" should be the response.
             For example, if I ask you about all my emails, your response should be "ALL_EMAILS".
-            If I ask you about my latest emails, your response should be "LATEST_EMAILS".
 
             Beside that, you will act as normal personal assistant.
-            If you can not answer the question because you don't have data specific to the date,
-            your response should be "ASK_GOOGLE".
-            For example, if I ask you about how much the price of GPU today? your response should be "ASK_GOOGLE"
+            If you can not answer the question because you don't have data to specific date,
+            your response should be "ASK_GOOGLE". However, answer like above paragraph if it's still related to above array of objects.
+            For example, if I ask you about how much the price of GPU today? your response should be "ASK_GOOGLE",
+            but if I ask you about Do I have any emails today? your response still should be "ALL_EMAILS".
             """
         },
     ],
@@ -194,6 +191,27 @@ def evaluate_command(text):
         play_audio_from_text_google(answer)
     else:
         answer = ask_gpt(text)
+        if ("ALL_EMAILS" in answer):
+            response = gmail_api.get_messages()
+            answer = ask_gpt(text=[
+                {
+                    "role": "assistant",
+                    "content": f"""
+                        I want you to act as a gmail assistant.
+                        I will give you response as json object,
+                        you will be able to elaborate list of emails, like you read emails.
+                        However, the response you get is list of objects with id and snippet attributes,
+                        you have to summarize them and elaborate them one by one only for the subjects.
+                        Do not include IDs, Snippet, or any explanation in your response, simply elaborate the subjects with the style of a personal assistant.
+                        Your answer should be translated according to my language whose locale is {LANGUAGE}.
+                        """
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(response)
+                }
+            ], override=True)
+
         # if ("ASK_GOOGLE" in answer):
         #     answer = ask_gpt(text, "google_query")
         #     print(answer)
@@ -203,25 +221,9 @@ def evaluate_command(text):
         #             "cx": GOOLGE_MACHINE_ID,
         #             "q": answer
         #         })
-        #     answer = ask_gpt(text=[
-        #         {
-        #             "role": "assistant",
-        #             "content": f"""
-        #                 I want you to act as a advanced google response interpreter.
-        #                 I will give you response as json object,
-        #                 you will be able to summary the best answer you get from the response,
-        #                 and you will be able to answer this question ("{answer}") according to the summary.
-        #                 Do not include any explanations or additional information in your response, simply provide the generated response.
-        #                 """
-        #         },
-        #         {
-        #             "role": "user",
-        #             "content": json.dumps(data["items"][:2])
-        #         }
-        #     ], override=True)
         print(answer)
         # play_audio_from_text(answer)
-        # play_audio_from_text_google(answer)
+        play_audio_from_text_google(answer)
         if (translate("terima kasih") in answer.lower() or translate("terima kasih", "en-US") in answer.lower()):
             return False
     return True
