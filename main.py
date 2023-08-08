@@ -14,11 +14,16 @@ from transformers import pipeline
 import elevenlabs
 import os
 from dotenv import load_dotenv
+import requests
+import json
+# from multiprocessing import Process, Pipe
 
 load_dotenv()
 
 elevenlabs.set_api_key(os.getenv("ELEVEN_API_KEY"))
 openai.api_key = os.getenv("OPENAI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOLGE_MACHINE_ID = os.getenv("GOOLGE_MACHINE_ID")
 
 CHUNK = 1024  # The number of frames per buffer
 FORMAT = pyaudio.paInt16  # The audio format (16-bit integer)
@@ -38,30 +43,69 @@ LANGUAGE = "id-ID"
 is_eval_mode = False
 
 
-templates_obj = {
-    "basic": """
-            Kamu adalah seorang yang sangat pintar dari semua pelajaran.
-            Jawablah semua pertanyaan dari user.
-            Tidak perlu menjelaskan secara spesifik dan jawab secukupnya.
-            Tidak perlu selalu mengucapkan terima kasih,
-            tapi tanyakan apakah user ingin bertanya lagi.
-            Jika user tidak ingin bertanya lagi, baru ucapkan 'terima kasih ya!'.
-            """,
-    "write": """
+MESSAGES_TEMPLATE = {
+    "basic": [
+        {
+            "role": "assistant",
+            "content": """
+            I want you to act as a response generator.
+            I will provide you with question or statements,
+            Your task is to generate response based on below array of objects.
+            [
+                {
+                    "name": ["email"],
+                    "type": "ALL_EMAILS"
+                },
+                {
+                    "name": ["email", "terakhir"],
+                    "type": "LATEST_EMAIL"
+                },
+                {   "name": ["panggilan"],
+                    "type": "ALL_CALLS"
+                }
+            ]
+            Do not include any explanations or additional information in your response, simply provide the generated response.
+            The key "name" is the words that related to the question or statement and the key "type" should be the response.
+            For example, if I ask you about all my emails, your response should be "ALL_EMAILS".
+            If I ask you about my latest emails, your response should be "LATEST_EMAILS".
+
+            Beside that, you will act as normal personal assistant.
+            If you can not answer the question because you don't have data specific to the date,
+            your response should be "ASK_GOOGLE".
+            For example, if I ask you about how much the price of GPU today? your response should be "ASK_GOOGLE"
+            """
+        },
+    ],
+    "write": [
+        {
+            "role": "assistant",
+            "content": """
             Kamu akan mengetikkan sesuatu pada komputer user. 
             Jadi, pastikan jawaban kamu sangat singkat dan tidak perlu penjelasan apa pun.
             Misal, user ingin kamu menuliskan topi dalam bahasa inggris,
             maka kamu akan menjawab 'hat' tanpa ada tambahan jawaban lain.
-            """,
-    # "api": """
-    #         Kamu adalah penyedia penyedia api, Perhatikan pertanyaan atau pernyataan dari user.
-    #         Jika user bertanya tentang email dia, atau dia ingin kamu memberitahu email terakhir
-    #         yang tersedia. Kamu bisa memberikan jawaban berupa json object, yaitu:
-    #         {type: 'LATEST_EMAIL'}.
-    #         Jika user ingin kamu menelpon seseorang. Kamu bisa memberikan jawaban berupa json object, yaitu:
-    #         {type: 'CALL_PHONE'}.
+            """
+        },
+    ],
+    # "google_query": [
+    #     {
+    #         "role": "assistant",
+    #         "content": """
+    #         I want you to act as a advanced google query interpreter.
+    #         I will give you question or statement and you will be able to generate query for google search from that question.
+    #         Do not include any explanations or additional information in your response, simply provide the generated response.
     #         """
+    #     }
+    # ],
 }
+
+
+def query(url, method="GET", payload=None, headers=None):
+    if (method == "POST"):
+        response = requests.request(method, url, headers=headers, json=payload)
+        return json.loads(response.content.decode("utf-8"))
+    response = requests.request(method, url, headers=headers, params=payload)
+    return json.loads(response.content.decode("utf-8"))
 
 
 def translate(text, language=LANGUAGE):
@@ -118,20 +162,17 @@ def play_audio_from_text(text):
 #     return generated_text['generated_text']
 
 
-def ask_gpt(text, template="basic"):
-    gpt_mode = "gpt-3.5-turbo-16k"
+def ask_gpt(text, override=False, template="basic"):
+    messages = MESSAGES_TEMPLATE[template] + [{
+        "role": "user",
+        "content": text
+    }]
+    if (override is True):
+        messages = text
+    gpt_mode = "gpt-3.5-turbo"
     response = openai.ChatCompletion.create(
         model=gpt_mode,
-        messages=[
-            {
-                "role": "system",
-                "content": templates_obj[template]
-            },
-            {
-                "role": "user",
-                "content": text
-            }
-        ],
+        messages=messages,
         temperature=1,
         max_tokens=256,
         top_p=1,
@@ -149,12 +190,37 @@ def evaluate_command(text):
         answer = ask_gpt(text, "write")
         print(answer)
         type_text(answer)
-        play_audio_from_text(answer)
-        # play_audio_from_text_google(answer)
+        # play_audio_from_text(answer)
+        play_audio_from_text_google(answer)
     else:
         answer = ask_gpt(text)
+        # if ("ASK_GOOGLE" in answer):
+        #     answer = ask_gpt(text, "google_query")
+        #     print(answer)
+        #     data = query(
+        #         f"https://www.googleapis.com/customsearch/v1", payload={
+        #             "key": GOOGLE_API_KEY,
+        #             "cx": GOOLGE_MACHINE_ID,
+        #             "q": answer
+        #         })
+        #     answer = ask_gpt(text=[
+        #         {
+        #             "role": "assistant",
+        #             "content": f"""
+        #                 I want you to act as a advanced google response interpreter.
+        #                 I will give you response as json object,
+        #                 you will be able to summary the best answer you get from the response,
+        #                 and you will be able to answer this question ("{answer}") according to the summary.
+        #                 Do not include any explanations or additional information in your response, simply provide the generated response.
+        #                 """
+        #         },
+        #         {
+        #             "role": "user",
+        #             "content": json.dumps(data["items"][:2])
+        #         }
+        #     ], override=True)
         print(answer)
-        play_audio_from_text(answer)
+        # play_audio_from_text(answer)
         # play_audio_from_text_google(answer)
         if (translate("terima kasih") in answer.lower() or translate("terima kasih", "en-US") in answer.lower()):
             return False
@@ -209,7 +275,6 @@ def main():
     speak_frames = []
     frames = []
     is_eval_mode = False
-    # eval_mode = "unknown"
 
     try:
         while True:
@@ -239,12 +304,12 @@ def main():
                         print("Evaluating...")
                         save_audio(frames, USER_VOICE_FILENAME)
                         text = transcribe_audio_to_text(USER_VOICE_FILENAME)
-                        if (is_eval_mode):
+                        if (is_eval_mode and text != ""):
                             print("Command: " + text)
                             result = evaluate_command(text)
                             is_eval_mode = result
                         elif (HOTWORD in text):
-                            answer_text = "Hi!"
+                            answer_text = "Ya, Ada apa?"
                             # play_audio_from_text(answer_text)
                             play_audio_from_text_google(answer_text)
                             print(answer_text)
@@ -255,11 +320,13 @@ def main():
     except KeyboardInterrupt:
         print("Stopped.")
     finally:
-        # os.remove(AGENT_VOICE_FILENAME)
-        # os.remove(USER_VOICE_FILENAME)
         stream.stop_stream()
         stream.close()
         p.terminate()
+        if (os.path.exists(AGENT_VOICE_FILENAME)):
+            os.remove(AGENT_VOICE_FILENAME)
+        if (os.path.exists(USER_VOICE_FILENAME)):
+            os.remove(USER_VOICE_FILENAME)
 
 
 if __name__ == "__main__":
