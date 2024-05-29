@@ -1,11 +1,9 @@
-pyaudio
+sounddevice
+numpy
 SpeechRecognition
 gTTs
 pydub
 pyautogui
 openai
-transformers
-torch
-einops
-accelerate
 python-dotenv
+elevenlabs
