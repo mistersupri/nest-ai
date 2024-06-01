@@ -4,6 +4,10 @@ SpeechRecognition
 gTTs
 pydub
 pyautogui
+pytesseract
 openai
 python-dotenv
 elevenlabs
+termcolor
+ollama
+pillow
