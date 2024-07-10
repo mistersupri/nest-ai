@@ -11,3 +11,7 @@ elevenlabs
 termcolor
 ollama
 pillow
+opencv-python
+langchain
+langchain-community
+langchain_openai

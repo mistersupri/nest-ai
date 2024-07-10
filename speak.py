@@ -1,11 +1,17 @@
 import elevenlabs
+from elevenlabs.client import ElevenLabs
 from gtts import gTTS
 from pydub import AudioSegment
 from pydub.playback import play
 import os
 from dotenv import load_dotenv
 
-elevenlabs.set_api_key(os.getenv("ELEVEN_API_KEY"))
+load_dotenv()
+
+LANGUAGE="id-ID"
+AGENT_VOICE_FILENAME = "agent.mp3"
+
+client=ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
 def text_to_audio(text, audio_filename, lang=LANGUAGE[:2]):
     tts = gTTS(text=text, lang=lang, slow=False)
@@ -22,10 +28,9 @@ def play_audio_from_text_google(text):
     play_audio(AGENT_VOICE_FILENAME)
 
 
-def play_audio_from_text(text):
-    audio = elevenlabs.generate(
+def play_audio_from_text_eleven(text):
+    audio = client.generate(
         text=text,
-        voice="Bella",
-        model='eleven_multilingual_v1'
+        model='eleven_turbo_v2'
     )
     elevenlabs.play(audio)
